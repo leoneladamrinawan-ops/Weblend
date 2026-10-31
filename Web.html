@@ -1,0 +1,1144 @@
+<!-- ... existing code ... -->
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-zinc-950 text-zinc-100 selection:bg-orange-500 selection:text-white">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blender Studio 3D Web Suite</title>
+    <!-- Tailwind CSS CDN with full fallback layout reset -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        blender: {
+                            bg: '#18181b',
+                            panel: '#27272a',
+                            border: '#3f3f46',
+                            accent: '#f97316'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Three.js and Addons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; background-color: #09090b; color: #f4f4f5; }
+        canvas { display: block; outline: none; }
+        input[type="range"] { accent-color: #f97316; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #18181b; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 2px; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col overflow-hidden bg-zinc-950 text-zinc-200">
+
+    <!-- Top Menu Bar -->
+    <header class="h-9 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-3 text-xs select-none z-30">
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-1.5 font-bold text-orange-500">
+                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                <span>BLENDER WEB</span>
+            </div>
+            <nav class="flex items-center space-x-1 text-zinc-300">
+                <div class="relative group">
+                    <button class="px-2 py-1 rounded hover:bg-zinc-800">File</button>
+                    <div class="hidden group-hover:flex flex-col absolute top-full left-0 bg-zinc-900 border border-zinc-800 rounded shadow-xl py-1 w-40 z-50">
+                        <button onclick="document.getElementById('fileInput').click()" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white flex justify-between">Import Model <span>.glb/.fbx</span></button>
+                        <button onclick="exportGLTF()" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">Export Scene (.glb)</button>
+                        <hr class="border-zinc-800 my-1">
+                        <button onclick="location.reload()" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">New Scene</button>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <button class="px-2 py-1 rounded hover:bg-zinc-800">Add</button>
+                    <div class="hidden group-hover:flex flex-col absolute top-full left-0 bg-zinc-900 border border-zinc-800 rounded shadow-xl py-1 w-36 z-50">
+                        <button onclick="addPrimitive('cube')" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">Cube</button>
+                        <button onclick="addPrimitive('sphere')" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">Sphere</button>
+                        <button onclick="addPrimitive('cylinder')" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">Cylinder</button>
+                        <button onclick="addPrimitive('plane')" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">Plane</button>
+                        <button onclick="addPrimitive('torus')" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">Torus</button>
+                        <hr class="border-zinc-800 my-1">
+                        <button onclick="addLight('point')" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">Point Light</button>
+                        <button onclick="addLight('directional')" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">Sun Light</button>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <button class="px-2 py-1 rounded hover:bg-zinc-800">Render</button>
+                    <div class="hidden group-hover:flex flex-col absolute top-full left-0 bg-zinc-900 border border-zinc-800 rounded shadow-xl py-1 w-44 z-50">
+                        <button onclick="renderImage()" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">Render Image (PNG)</button>
+                        <button onclick="openVideoRenderModal()" class="text-left px-3 py-1.5 hover:bg-orange-500 hover:text-white">Render Video (WebM)</button>
+                    </div>
+                </div>
+                <button onclick="openInfoModal()" class="px-2 py-1 rounded hover:bg-zinc-800 text-zinc-300 flex items-center space-x-1">
+                    <svg class="w-3.5 h-3.5 fill-current text-orange-400" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    <span>Info</span>
+                </button>
+            </nav>
+        </div>
+        <div class="flex items-center space-x-2 text-zinc-400">
+            <span id="fpsCounter" class="bg-zinc-800 px-2 py-0.5 rounded text-[10px]">60 FPS</span>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Left Blender Toolbar -->
+        <aside class="w-10 bg-zinc-900 border-r border-zinc-800 flex flex-col items-center py-2 space-y-2 z-20 select-none">
+            <button onclick="setActiveTool('select')" title="Select Box" class="tool-btn p-1.5 rounded hover:bg-zinc-800 text-orange-400">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M3 3l7 18 3-7 7-3L3 3z"/></svg>
+            </button>
+            <button onclick="setActiveTool('cursor')" title="3D Cursor" class="tool-btn p-1.5 rounded hover:bg-zinc-800 text-zinc-400">
+                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+            </button>
+            <hr class="w-6 border-zinc-800">
+            <button onclick="setActiveTool('annotate')" title="Annotate Pencil" class="tool-btn p-1.5 rounded hover:bg-zinc-800 text-zinc-400">
+                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-1.5M2 22l5-1 11-11-4-4L3 17l-1 5z"/></svg>
+            </button>
+            <button onclick="setActiveTool('measure')" title="Measure Tool" class="tool-btn p-1.5 rounded hover:bg-zinc-800 text-zinc-400">
+                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M3 21L21 3M6 18l2 2M10 14l2 2M14 10l2 2M14 10l2 2M18 6l2 2"/></svg>
+            </button>
+            <hr class="w-6 border-zinc-800">
+            <button onclick="setActiveTool('extrude')" title="Extrude Region" class="tool-btn p-1.5 rounded hover:bg-zinc-800 text-zinc-400">
+                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><rect x="6" y="10" width="12" height="10" rx="1"/><path d="M12 10V3M9 6l3-3 3 3"/></svg>
+            </button>
+            <button onclick="setActiveTool('inset')" title="Inset Faces" class="tool-btn p-1.5 rounded hover:bg-zinc-800 text-zinc-400">
+                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+            </button>
+            <button onclick="setActiveTool('bevel')" title="Bevel Edges" class="tool-btn p-1.5 rounded hover:bg-zinc-800 text-zinc-400">
+                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M3 21h18V9L9 3H3v18z"/></svg>
+            </button>
+            <button onclick="setActiveTool('smooth')" title="Smooth Subdivide" class="tool-btn p-1.5 rounded hover:bg-zinc-800 text-zinc-400">
+                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>
+            </button>
+        </aside>
+
+        <!-- 3D Viewport Area -->
+        <main id="canvasContainer" class="flex-1 relative bg-zinc-950 overflow-hidden">
+            <!-- Floating Viewport Header -->
+            <div class="absolute top-2 left-2 flex items-center space-x-1.5 bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-md p-1 text-xs z-10 shadow-lg select-none">
+                <button onclick="setView('top')" class="px-2 py-0.5 rounded hover:bg-zinc-800 text-zinc-300">Top</button>
+                <button onclick="setView('front')" class="px-2 py-0.5 rounded hover:bg-zinc-800 text-zinc-300">Front</button>
+                <button onclick="setView('side')" class="px-2 py-0.5 rounded hover:bg-zinc-800 text-zinc-300">Side</button>
+                <div class="h-3 w-px bg-zinc-700 mx-1"></div>
+                <button onclick="setTransformMode('select')" id="hdr-select-btn" class="px-2 py-0.5 rounded bg-zinc-800 text-orange-400 font-medium flex items-center space-x-1">
+                    <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M3 3l7 18 3-7 7-3L3 3z"/></svg>
+                    <span>Select</span>
+                </button>
+                <button onclick="setTransformMode('translate')" id="hdr-move-btn" class="px-2 py-0.5 rounded hover:bg-zinc-800 text-zinc-300 flex items-center space-x-1">
+                    <svg class="w-3 h-3 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    <span>Move</span>
+                </button>
+                <button onclick="setTransformMode('rotate')" id="hdr-rotate-btn" class="px-2 py-0.5 rounded hover:bg-zinc-800 text-zinc-300 flex items-center space-x-1">
+                    <svg class="w-3 h-3 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    <span>Rotate</span>
+                </button>
+                <button onclick="setTransformMode('scale')" id="hdr-scale-btn" class="px-2 py-0.5 rounded hover:bg-zinc-800 text-zinc-300 flex items-center space-x-1">
+                    <svg class="w-3 h-3 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                    <span>Resize</span>
+                </button>
+                <div class="h-3 w-px bg-zinc-700 mx-1"></div>
+                <button onclick="setShading('solid')" class="px-2 py-0.5 rounded hover:bg-zinc-800 text-zinc-300">Solid</button>
+                <button onclick="setShading('wireframe')" class="px-2 py-0.5 rounded hover:bg-zinc-800 text-zinc-300">Wire</button>
+            </div>
+
+            <!-- Viewport Notification Toast -->
+            <div id="toast" class="absolute top-12 left-1/2 -translate-x-1/2 bg-orange-500/90 text-white text-xs px-3 py-1 rounded shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-20">
+                Action Applied
+            </div>
+
+            <canvas id="threeCanvas" class="w-full h-full"></canvas>
+        </main>
+
+        <!-- Right Properties Sidebar -->
+        <aside class="w-72 bg-zinc-900 border-l border-zinc-800 flex flex-col text-xs z-20 select-none">
+            <!-- Scene Outliner Tree -->
+            <div class="h-1/3 border-b border-zinc-800 flex flex-col">
+                <div class="h-7 bg-zinc-950 border-b border-zinc-800 px-3 flex items-center justify-between font-semibold text-zinc-400">
+                    <span>Scene Hierarchy</span>
+                </div>
+                <div id="outlinerList" class="flex-1 overflow-y-auto p-1 space-y-0.5">
+                    <!-- Dynamic outliner objects -->
+                </div>
+            </div>
+
+            <!-- Object Properties Tabs -->
+            <div class="flex-1 flex flex-col">
+                <div class="h-7 bg-zinc-950 border-b border-zinc-800 flex items-center space-x-1 px-2">
+                    <button id="tab-transform-btn" onclick="switchTab('transform')" class="px-2 py-1 rounded bg-zinc-800 text-orange-400 font-semibold">Transform</button>
+                    <button id="tab-material-btn" onclick="switchTab('material')" class="px-2 py-1 rounded hover:bg-zinc-800 text-zinc-400">Material</button>
+                    <button id="tab-light-btn" onclick="switchTab('light')" class="px-2 py-1 rounded hover:bg-zinc-800 text-zinc-400">Light</button>
+                    <button id="tab-world-btn" onclick="switchTab('world')" class="px-2 py-1 rounded hover:bg-zinc-800 text-zinc-400">World</button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-3">
+                    <!-- Transform Tab -->
+                    <div id="tab-transform" class="space-y-3">
+                        <div class="flex items-center justify-between text-zinc-400 font-semibold mb-1">
+                            <span>TRANSFORM</span>
+                            <span id="selectedObjName" class="text-orange-400">None</span>
+                        </div>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="text-zinc-500 block mb-1">Location</label>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5"><span class="text-red-500 font-bold mr-1">X</span><input type="number" id="posX" step="0.1" value="0.00" class="w-full bg-transparent border-0 text-right focus:outline-none" oninput="updateObjectTransform()"></div>
+                                    <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5"><span class="text-green-500 font-bold mr-1">Y</span><input type="number" id="posY" step="0.1" value="0.00" class="w-full bg-transparent border-0 text-right focus:outline-none" oninput="updateObjectTransform()"></div>
+                                    <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5"><span class="text-blue-500 font-bold mr-1">Z</span><input type="number" id="posZ" step="0.1" value="0.00" class="w-full bg-transparent border-0 text-right focus:outline-none" oninput="updateObjectTransform()"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-zinc-500 block mb-1">Rotation (Deg)</label>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5"><span class="text-red-500 font-bold mr-1">X</span><input type="number" id="rotX" step="1" value="0" class="w-full bg-transparent border-0 text-right focus:outline-none" oninput="updateObjectTransform()"></div>
+                                    <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5"><span class="text-green-500 font-bold mr-1">Y</span><input type="number" id="rotY" step="1" value="0" class="w-full bg-transparent border-0 text-right focus:outline-none" oninput="updateObjectTransform()"></div>
+                                    <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5"><span class="text-blue-500 font-bold mr-1">Z</span><input type="number" id="rotZ" step="1" value="0" class="w-full bg-transparent border-0 text-right focus:outline-none" oninput="updateObjectTransform()"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-zinc-500 block mb-1">Scale</label>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5"><span class="text-red-500 font-bold mr-1">X</span><input type="number" id="scaleX" step="0.1" value="1.00" class="w-full bg-transparent border-0 text-right focus:outline-none" oninput="updateObjectTransform()"></div>
+                                    <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5"><span class="text-green-500 font-bold mr-1">Y</span><input type="number" id="scaleY" step="0.1" value="1.00" class="w-full bg-transparent border-0 text-right focus:outline-none" oninput="updateObjectTransform()"></div>
+                                    <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5"><span class="text-blue-500 font-bold mr-1">Z</span><input type="number" id="scaleZ" step="0.1" value="1.00" class="w-full bg-transparent border-0 text-right focus:outline-none" oninput="updateObjectTransform()"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Material Tab -->
+                    <div id="tab-material" class="space-y-3 hidden">
+                        <div class="text-zinc-400 font-semibold mb-1">PBR MATERIAL</div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-zinc-400">Base Color</span>
+                            <input type="color" id="matColor" value="#3b82f6" class="w-8 h-6 bg-transparent border-0 cursor-pointer" onchange="updateMaterial()">
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-zinc-400">
+                                <span>Roughness</span>
+                                <span id="valRoughness">0.5</span>
+                            </div>
+                            <input type="range" id="matRoughness" min="0" max="1" step="0.05" value="0.5" class="w-full" oninput="updateMaterial()">
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-zinc-400">
+                                <span>Metallic</span>
+                                <span id="valMetallic">0.0</span>
+                            </div>
+                            <input type="range" id="matMetallic" min="0" max="1" step="0.05" value="0" class="w-full" oninput="updateMaterial()">
+                        </div>
+                        <div class="pt-2 border-t border-zinc-800 space-y-2">
+                            <span class="text-zinc-400 block font-semibold">Texture Maps</span>
+                            <input type="file" id="textureInput" accept="image/*" class="hidden" onchange="uploadTexture(event)">
+                            <button onclick="document.getElementById('textureInput').click()" class="w-full py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded border border-zinc-700">Import Texture Image</button>
+                        </div>
+                    </div>
+
+                    <!-- Light Tab -->
+                    <div id="tab-light" class="space-y-3 hidden">
+                        <div class="text-zinc-400 font-semibold mb-1">LIGHT DATA (BLENDER)</div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-zinc-400">Light Color</span>
+                            <input type="color" id="lightColor" value="#ffaa00" class="w-8 h-6 bg-transparent border-0 cursor-pointer" onchange="updateLight()">
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-zinc-400">
+                                <span>Power / Intensity</span>
+                                <span id="valLightPower">50 W</span>
+                            </div>
+                            <input type="range" id="lightPower" min="0" max="500" step="5" value="50" class="w-full" oninput="updateLight()">
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-zinc-400">
+                                <span>Radius / Distance</span>
+                                <span id="valLightRadius">25m</span>
+                            </div>
+                            <input type="range" id="lightRadius" min="1" max="100" step="1" value="25" class="w-full" oninput="updateLight()">
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-zinc-400">Cast Shadows</span>
+                            <input type="checkbox" id="lightShadows" class="accent-orange-500 w-4 h-4 rounded cursor-pointer" onchange="updateLight()" checked>
+                        </div>
+                    </div>
+
+                    <!-- World Tab -->
+                    <div id="tab-world" class="space-y-3 hidden">
+                        <div class="text-zinc-400 font-semibold mb-1">WORLD ENVIRONMENT</div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-zinc-400">Background Color</span>
+                            <input type="color" id="worldColor" value="#18181b" class="w-8 h-6 bg-transparent border-0 cursor-pointer" onchange="updateWorld()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- Timeline Panel -->
+    <footer class="h-28 bg-zinc-900 border-t border-zinc-800 flex flex-col select-none z-20">
+        <div class="h-8 bg-zinc-950 border-b border-zinc-800 px-3 flex items-center justify-between text-xs">
+            <div class="flex items-center space-x-2">
+                <button onclick="togglePlay()" id="playBtn" class="p-1 rounded hover:bg-zinc-800 text-orange-400">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <span class="text-zinc-400">Frame:</span>
+                <input type="number" id="currentFrameInput" value="0" min="0" max="250" class="w-12 bg-zinc-900 border border-zinc-800 text-center rounded py-0.5" onchange="seekFrame(parseInt(this.value))">
+                <span class="text-zinc-500">/ 250</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="addKeyframe()" class="px-2.5 py-1 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded shadow flex items-center space-x-1">
+                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 2l10 10-10 10L2 12 12 2z"/></svg>
+                    <span>Keyframe</span>
+                </button>
+            </div>
+        </div>
+        <div class="flex-1 relative bg-zinc-950 overflow-hidden">
+            <canvas id="timelineCanvas" class="w-full h-full cursor-pointer"></canvas>
+        </div>
+    </footer>
+
+    <!-- Video Render Modal -->
+    <div id="videoRenderModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-5 w-96 space-y-4 shadow-2xl">
+            <h3 class="text-sm font-bold text-orange-500 flex items-center space-x-2">
+                <span>Render Video Animation (WebM)</span>
+            </h3>
+            <div id="videoRenderControls" class="space-y-3 text-xs">
+                <div>
+                    <label class="text-zinc-400 block mb-1">Target Framerate (FPS)</label>
+                    <select id="videoFps" class="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-zinc-200">
+                        <option value="30">30 FPS</option>
+                        <option value="60" selected>60 FPS</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button onclick="closeVideoRenderModal()" class="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded">Cancel</button>
+                    <button onclick="startVideoRender()" class="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded font-medium">Start Render</button>
+                </div>
+            </div>
+            <div id="videoRenderProgress" class="hidden space-y-2">
+                <div class="flex justify-between text-xs text-zinc-400">
+                    <span id="videoStatusText">Rendering frame 0 / 250...</span>
+                    <span id="videoPercentText">0%</span>
+                </div>
+                <div class="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-800">
+                    <div id="videoProgressBar" class="bg-orange-500 h-full w-0 transition-all"></div>
+                </div>
+            </div>
+            <div id="videoRenderOutput" class="hidden space-y-3 text-xs text-center">
+                <video id="renderedVideoPreview" controls class="w-full rounded border border-zinc-800 bg-black max-h-48"></video>
+                <a id="downloadVideoBtn" download="blender_animation.webm" class="block w-full py-2 bg-orange-500 hover:bg-orange-600 text-white rounded font-semibold">Download WebM Video</a>
+                <button onclick="closeVideoRenderModal()" class="w-full py-1 bg-zinc-800 text-zinc-400 rounded hover:bg-zinc-700">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="infoModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-5 w-80 space-y-4 shadow-2xl text-center">
+            <div class="flex items-center justify-center space-x-2 text-orange-500">
+                <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                <h3 class="text-base font-bold text-white">Blender Web Studio</h3>
+            </div>
+            <div class="text-xs space-y-2 text-zinc-300">
+                <p class="font-medium text-zinc-100">Created By <span class="text-orange-400 font-semibold">Adam</span></p>
+                <div class="pt-2 border-t border-zinc-800">
+                    <a href="https://github.com/leoneladamrinawan-ops/Weblend" target="_blank" rel="noopener noreferrer" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-orange-400 rounded transition border border-zinc-700">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                        <span>GitHub Repository</span>
+                    </a>
+                </div>
+            </div>
+            <button onclick="closeInfoModal()" class="w-full py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded font-medium text-xs">Close</button>
+        </div>
+    </div>
+
+    <!-- Hidden Input for Files -->
+    <input type="file" id="fileInput" accept=".gltf,.glb,.obj,.fbx,.stl" class="hidden" onchange="handleFileImport(event)">
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Global Application State
+        let scene, camera, renderer, controls, transformControls;
+        let sceneObjects = [];
+        let selectedObject = null;
+        let isPlaying = false;
+        let currentFrame = 0;
+        let maxFrames = 250;
+        let animationKeyframes = {};
+        let animationMixers = [];
+        let clock = new THREE.Clock();
+        let isRenderingVideo = false;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let toastTimeout = null;
+
+        // Toast Notification Function
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2000);
+        }
+
+        // Switch Inspector Sidebar Tab
+        function switchTab(tabName) {
+            ['transform', 'material', 'light', 'world'].forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                const btn = document.getElementById(`tab-${t}-btn`);
+                if (el) el.classList.add('hidden');
+                if (btn) btn.className = 'px-2 py-1 rounded hover:bg-zinc-800 text-zinc-400';
+            });
+
+            const activeEl = document.getElementById(`tab-${tabName}`);
+            const activeBtn = document.getElementById(`tab-${tabName}-btn`);
+            if (activeEl) activeEl.classList.remove('hidden');
+            if (activeBtn) activeBtn.className = 'px-2 py-1 rounded bg-zinc-800 text-orange-400 font-semibold';
+        }
+
+        // Update Object Position, Rotation, Scale from Inspector Inputs
+        function updateObjectTransform() {
+            if (!selectedObject) return;
+
+            const px = parseFloat(document.getElementById('posX').value) || 0;
+            const py = parseFloat(document.getElementById('posY').value) || 0;
+            const pz = parseFloat(document.getElementById('posZ').value) || 0;
+            selectedObject.position.set(px, py, pz);
+
+            const rx = THREE.MathUtils.degToRad(parseFloat(document.getElementById('rotX').value) || 0);
+            const ry = THREE.MathUtils.degToRad(parseFloat(document.getElementById('rotY').value) || 0);
+            const rz = THREE.MathUtils.degToRad(parseFloat(document.getElementById('rotZ').value) || 0);
+            selectedObject.rotation.set(rx, ry, rz);
+
+            const sx = parseFloat(document.getElementById('scaleX').value) || 1;
+            const sy = parseFloat(document.getElementById('scaleY').value) || 1;
+            const sz = parseFloat(document.getElementById('scaleZ').value) || 1;
+            selectedObject.scale.set(sx, sy, sz);
+        }
+
+        // Update Light Properties
+        function updateLight() {
+            if (!selectedObject) return;
+            const lightObj = selectedObject.isLight ? selectedObject : (selectedObject.userData?.lightRef || null);
+            if (!lightObj) return;
+
+            const colorHex = document.getElementById('lightColor').value;
+            const power = parseFloat(document.getElementById('lightPower').value) || 50;
+            const radius = parseFloat(document.getElementById('lightRadius').value) || 25;
+            const shadows = document.getElementById('lightShadows').checked;
+
+            lightObj.color.set(colorHex);
+            lightObj.intensity = power / 10;
+            if (lightObj.distance !== undefined) lightObj.distance = radius;
+            lightObj.castShadow = shadows;
+
+            document.getElementById('valLightPower').textContent = `${Math.round(power)} W`;
+            document.getElementById('valLightRadius').textContent = `${radius}m`;
+
+            if (selectedObject.userData?.helperRef) {
+                selectedObject.userData.helperRef.update();
+            }
+        }
+
+        // Update World Environment
+        function updateWorld() {
+            if (!scene) return;
+            const colorHex = document.getElementById('worldColor').value;
+            scene.background = new THREE.Color(colorHex);
+        }
+
+        function setView(view) {
+            if (!camera || !controls) return;
+            if (view === 'top') {
+                camera.position.set(0, 12, 0);
+            } else if (view === 'front') {
+                camera.position.set(0, 0, 12);
+            } else if (view === 'side') {
+                camera.position.set(12, 0, 0);
+            }
+            controls.target.set(0, 0, 0);
+            controls.update();
+            showToast(`View: ${view.toUpperCase()}`);
+        }
+
+        function setShading(mode) {
+            sceneObjects.forEach(obj => {
+                if (obj.isMesh && obj.material) {
+                    obj.material.wireframe = (mode === 'wireframe');
+                }
+            });
+            showToast(`Shading: ${mode.toUpperCase()}`);
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const filename = file.name.toLowerCase();
+            const url = URL.createObjectURL(file);
+
+            if (filename.endsWith('.gltf') || filename.endsWith('.glb')) {
+                if (typeof THREE.GLTFLoader !== 'undefined') {
+                    const loader = new THREE.GLTFLoader();
+                    loader.load(url, (gltf) => {
+                        const importedMesh = gltf.scene;
+                        importedMesh.name = file.name;
+                        scene.add(importedMesh);
+                        sceneObjects.push(importedMesh);
+                        if (gltf.animations && gltf.animations.length > 0) {
+                            const mixer = new THREE.AnimationMixer(importedMesh);
+                            gltf.animations.forEach(clip => mixer.clipAction(clip).play());
+                            animationMixers.push(mixer);
+                        }
+                        selectObject(importedMesh);
+                        showToast(`Loaded ${file.name}`);
+                    });
+                }
+            } else if (filename.endsWith('.fbx')) {
+                if (typeof THREE.FBXLoader !== 'undefined') {
+                    const loader = new THREE.FBXLoader();
+                    loader.load(url, (fbx) => {
+                        fbx.name = file.name;
+                        scene.add(fbx);
+                        sceneObjects.push(fbx);
+                        if (fbx.animations && fbx.animations.length > 0) {
+                            const mixer = new THREE.AnimationMixer(fbx);
+                            fbx.animations.forEach(clip => mixer.clipAction(clip).play());
+                            animationMixers.push(mixer);
+                        }
+                        selectObject(fbx);
+                        showToast(`Loaded FBX: ${file.name}`);
+                    });
+                }
+            } else if (filename.endsWith('.obj')) {
+                if (typeof THREE.OBJLoader !== 'undefined') {
+                    const loader = new THREE.OBJLoader();
+                    loader.load(url, (obj) => {
+                        obj.name = file.name;
+                        scene.add(obj);
+                        sceneObjects.push(obj);
+                        selectObject(obj);
+                        showToast(`Loaded OBJ: ${file.name}`);
+                    });
+                }
+            } else if (filename.endsWith('.stl')) {
+                if (typeof THREE.STLLoader !== 'undefined') {
+                    const loader = new THREE.STLLoader();
+                    loader.load(url, (geometry) => {
+                        const mat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.5 });
+                        const mesh = new THREE.Mesh(geometry, mat);
+                        mesh.name = file.name;
+                        scene.add(mesh);
+                        sceneObjects.push(mesh);
+                        selectObject(mesh);
+                        showToast(`Loaded STL: ${file.name}`);
+                    });
+                }
+            }
+        }
+
+        function uploadTexture(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file || !selectedObject) return;
+
+            const url = URL.createObjectURL(file);
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(url, (tex) => {
+                if (selectedObject.material) {
+                    selectedObject.material.map = tex;
+                    selectedObject.material.needsUpdate = true;
+                    showToast(`Applied texture: ${file.name}`);
+                }
+            });
+        }
+
+        function setTransformMode(mode) {
+            if (!transformControls) return;
+            ['select', 'move', 'rotate', 'scale'].forEach(m => {
+                const btn = document.getElementById(`hdr-${m}-btn`);
+                if (btn) btn.className = 'px-2 py-0.5 rounded hover:bg-zinc-800 text-zinc-300';
+            });
+            const activeBtn = document.getElementById(`hdr-${mode === 'translate' ? 'move' : mode}-btn`);
+            if (activeBtn) activeBtn.className = 'px-2 py-0.5 rounded bg-zinc-800 text-orange-400 font-medium';
+
+            if (mode === 'select') {
+                transformControls.detach();
+            } else {
+                transformControls.setMode(mode);
+                if (selectedObject) transformControls.attach(selectedObject);
+            }
+        }
+
+        function setActiveTool(tool) {
+            showToast(`Tool selected: ${tool.toUpperCase()}`);
+            if (tool === 'extrude' && selectedObject && selectedObject.isMesh) {
+                selectedObject.scale.y += 0.2;
+                syncTransformUI();
+            } else if (tool === 'bevel' && selectedObject && selectedObject.isMesh) {
+                selectedObject.scale.x += 0.1;
+                selectedObject.scale.z += 0.1;
+                syncTransformUI();
+            }
+        }
+
+        function selectObject(obj) {
+            selectedObject = obj;
+            if (obj && transformControls && transformControls.mode !== 'select') {
+                transformControls.attach(obj);
+            } else if (transformControls) {
+                transformControls.detach();
+            }
+
+            // Auto switch tab depending on object type
+            if (obj) {
+                if (obj.isLight || (obj.userData && obj.userData.lightRef)) {
+                    switchTab('light');
+                } else if (obj.isMesh || (obj.children && obj.children.some(c => c.isMesh))) {
+                    switchTab('material');
+                } else {
+                    switchTab('transform');
+                }
+            }
+
+            syncTransformUI();
+            updateOutliner();
+        }
+
+        function getTargetMesh(obj) {
+            if (!obj) return null;
+            if (obj.isMesh) return obj;
+            if (obj.children) {
+                for (let child of obj.children) {
+                    if (child.isMesh && child.material) return child;
+                }
+            }
+            return null;
+        }
+
+        function syncTransformUI() {
+            const nameEl = document.getElementById('selectedObjName');
+            if (!selectedObject) {
+                if (nameEl) nameEl.textContent = 'None';
+                return;
+            }
+
+            if (nameEl) nameEl.textContent = selectedObject.name || 'Object';
+
+            document.getElementById('posX').value = selectedObject.position.x.toFixed(2);
+            document.getElementById('posY').value = selectedObject.position.y.toFixed(2);
+            document.getElementById('posZ').value = selectedObject.position.z.toFixed(2);
+
+            document.getElementById('rotX').value = Math.round(THREE.MathUtils.radToDeg(selectedObject.rotation.x));
+            document.getElementById('rotY').value = Math.round(THREE.MathUtils.radToDeg(selectedObject.rotation.y));
+            document.getElementById('rotZ').value = Math.round(THREE.MathUtils.radToDeg(selectedObject.rotation.z));
+
+            document.getElementById('scaleX').value = selectedObject.scale.x.toFixed(2);
+            document.getElementById('scaleY').value = selectedObject.scale.y.toFixed(2);
+            document.getElementById('scaleZ').value = selectedObject.scale.z.toFixed(2);
+
+            const lightObj = selectedObject.isLight ? selectedObject : (selectedObject.userData?.lightRef || null);
+            if (lightObj) {
+                document.getElementById('lightColor').value = '#' + lightObj.color.getHexString();
+                document.getElementById('lightPower').value = lightObj.intensity * 10;
+                document.getElementById('valLightPower').textContent = `${Math.round(lightObj.intensity * 10)} W`;
+                document.getElementById('lightRadius').value = lightObj.distance || 25;
+                document.getElementById('valLightRadius').textContent = `${lightObj.distance || 25}m`;
+                document.getElementById('lightShadows').checked = !!lightObj.castShadow;
+            }
+
+            const targetMesh = getTargetMesh(selectedObject);
+            if (targetMesh && targetMesh.material && targetMesh.material.color) {
+                document.getElementById('matColor').value = '#' + targetMesh.material.color.getHexString();
+                if (targetMesh.material.roughness !== undefined) {
+                    document.getElementById('matRoughness').value = targetMesh.material.roughness;
+                    document.getElementById('valRoughness').textContent = targetMesh.material.roughness;
+                }
+                if (targetMesh.material.metalness !== undefined) {
+                    document.getElementById('matMetallic').value = targetMesh.material.metalness;
+                    document.getElementById('valMetallic').textContent = targetMesh.material.metalness;
+                }
+            }
+        }
+
+        function updateMaterial() {
+            if (!selectedObject) return;
+            const targetMesh = getTargetMesh(selectedObject);
+            if (!targetMesh || !targetMesh.material) return;
+
+            // Ensure material is cloned and unique to this specific mesh
+            if (!targetMesh.userData.materialCloned) {
+                targetMesh.material = targetMesh.material.clone();
+                targetMesh.userData.materialCloned = true;
+            }
+
+            const colorHex = document.getElementById('matColor').value;
+            const roughness = parseFloat(document.getElementById('matRoughness').value);
+            const metallic = parseFloat(document.getElementById('matMetallic').value);
+
+            targetMesh.material.color.set(colorHex);
+            if (targetMesh.material.roughness !== undefined) targetMesh.material.roughness = roughness;
+            if (targetMesh.material.metalness !== undefined) targetMesh.material.metalness = metallic;
+            targetMesh.material.needsUpdate = true;
+
+            document.getElementById('valRoughness').textContent = roughness;
+            document.getElementById('valMetallic').textContent = metallic;
+        }
+
+        function addPrimitive(type) {
+            let mesh;
+            // Create a brand new unique material instance for every new primitive
+            const mat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.4, metalness: 0.1 });
+
+            if (type === 'cube') {
+                mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), mat);
+                mesh.name = 'Cube';
+            } else if (type === 'sphere') {
+                mesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), mat);
+                mesh.name = 'Sphere';
+            } else if (type === 'cylinder') {
+                mesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2, 32), mat);
+                mesh.name = 'Cylinder';
+            } else if (type === 'plane') {
+                mesh = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), mat);
+                mesh.rotation.x = -Math.PI / 2;
+                mesh.name = 'Plane';
+            } else if (type === 'torus') {
+                mesh = new THREE.Mesh(new THREE.TorusGeometry(1, 0.4, 16, 100), mat);
+                mesh.name = 'Torus';
+            }
+
+            if (mesh) {
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.userData.materialCloned = true;
+                scene.add(mesh);
+                sceneObjects.push(mesh);
+                selectObject(mesh);
+                showToast(`Added ${mesh.name}`);
+            }
+        }
+
+        function updateOutliner() {
+            const list = document.getElementById('outlinerList');
+            if (!list) return;
+            list.innerHTML = '';
+
+            sceneObjects.forEach(obj => {
+                const isSel = (obj === selectedObject);
+                const item = document.createElement('div');
+                item.className = `flex items-center justify-between px-2 py-1 rounded cursor-pointer text-xs ${isSel ? 'bg-orange-500/20 text-orange-400 font-medium' : 'hover:bg-zinc-800 text-zinc-300'}`;
+                item.onclick = () => selectObject(obj);
+
+                const isLight = obj.isLight || (obj.userData && obj.userData.lightRef);
+                const iconPath = isLight 
+                    ? "M12 2a1 1 0 011 1v2a1 1 0 11-2 0V3a1 1 0 011-1zm0 15a5 5 0 100-10 5 5 0 000 10z" 
+                    : "M21 16.5C21 16.88 20.79 17.21 20.47 17.38L12.57 21.82C12.4 21.92 12.2 21.97 12 21.97C11.8 21.97 11.6 21.92 11.43 21.82L3.53 17.38C3.21 17.21 3 16.88 3 16.5V7.5C3 7.12 3.21 6.79 3.53 6.62L11.43 2.18C11.6 2.08 11.8 2.03 12 2.03C12.2 2.03 12.4 2.08 12.57 2.18L20.47 6.62C20.79 6.79 21 7.12 21 7.5V16.5Z";
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-1.5">
+                        <svg class="w-3.5 h-3.5 fill-current opacity-70" viewBox="0 0 24 24"><path d="${iconPath}"/></svg>
+                        <span>${obj.name || 'Object'}</span>
+                    </div>
+                    <span class="text-[10px] text-zinc-500 uppercase">${isLight ? 'Light' : 'Mesh'}</span>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function addPrimitive(type) {
+            let mesh;
+            const mat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.4 });
+
+            if (type === 'cube') {
+                mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), mat);
+                mesh.name = 'Cube';
+            } else if (type === 'sphere') {
+                mesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), mat);
+                mesh.name = 'Sphere';
+            } else if (type === 'cylinder') {
+                mesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2, 32), mat);
+                mesh.name = 'Cylinder';
+            } else if (type === 'plane') {
+                mesh = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), mat);
+                mesh.rotation.x = -Math.PI / 2;
+                mesh.name = 'Plane';
+            } else if (type === 'torus') {
+                mesh = new THREE.Mesh(new THREE.TorusGeometry(1, 0.4, 16, 100), mat);
+                mesh.name = 'Torus';
+            }
+
+            if (mesh) {
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+                sceneObjects.push(mesh);
+                selectObject(mesh);
+                showToast(`Added ${mesh.name}`);
+            }
+        }
+
+        function addLight(type) {
+            let lightObj;
+            if (type === 'directional') {
+                const light = new THREE.DirectionalLight(0xffffff, 1.5);
+                light.position.set(5, 10, 7.5);
+                light.castShadow = true;
+                light.name = 'Sun Light';
+                scene.add(light);
+                sceneObjects.push(light);
+                lightObj = light;
+            } else if (type === 'point') {
+                const pointLightGroup = new THREE.Group();
+                pointLightGroup.name = 'Point Light';
+                pointLightGroup.position.set(2, 4, 2);
+
+                const pointLight = new THREE.PointLight(0xffaa00, 5, 25);
+                pointLight.castShadow = true;
+                pointLightGroup.add(pointLight);
+
+                const bulbGeo = new THREE.SphereGeometry(0.15, 16, 16);
+                const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffcc44 });
+                const bulbMesh = new THREE.Mesh(bulbGeo, bulbMat);
+                pointLightGroup.add(bulbMesh);
+
+                const helper = new THREE.PointLightHelper(pointLight, 0.4, 0xffaa00);
+                scene.add(helper);
+
+                pointLightGroup.userData = { lightRef: pointLight, helperRef: helper };
+                scene.add(pointLightGroup);
+                sceneObjects.push(pointLightGroup);
+                lightObj = pointLightGroup;
+            }
+
+            if (lightObj) {
+                selectObject(lightObj);
+                switchTab('light');
+            }
+        }
+
+        function addKeyframe() {
+            if (!selectedObject) return;
+            const uuid = selectedObject.uuid;
+            if (!animationKeyframes[uuid]) animationKeyframes[uuid] = [];
+
+            animationKeyframes[uuid] = animationKeyframes[uuid].filter(k => k.frame !== currentFrame);
+            animationKeyframes[uuid].push({
+                frame: currentFrame,
+                pos: selectedObject.position.clone(),
+                rot: selectedObject.rotation.clone(),
+                scale: selectedObject.scale.clone()
+            });
+
+            drawTimeline();
+            showToast(`Keyframe added at frame ${currentFrame}`);
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('playBtn').classList.toggle('text-orange-500', isPlaying);
+        }
+
+        function seekFrame(frame) {
+            currentFrame = Math.max(0, Math.min(maxFrames, frame));
+            document.getElementById('currentFrameInput').value = currentFrame;
+
+            sceneObjects.forEach(obj => {
+                const keys = animationKeyframes[obj.uuid];
+                if (keys && keys.length > 0) {
+                    const exact = keys.find(k => k.frame === currentFrame);
+                    if (exact) {
+                        obj.position.copy(exact.pos);
+                        obj.rotation.copy(exact.rot);
+                        obj.scale.copy(exact.scale);
+                    }
+                }
+            });
+
+            syncTransformUI();
+            drawTimeline();
+        }
+
+        function drawTimeline() {
+            const canvas = document.getElementById('timelineCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width = canvas.clientWidth;
+            const h = canvas.height = canvas.clientHeight;
+
+            ctx.fillStyle = '#09090b';
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.strokeStyle = '#27272a';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= maxFrames; i += 10) {
+                const x = (i / maxFrames) * w;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+
+                if (i % 50 === 0) {
+                    ctx.fillStyle = '#71717a';
+                    ctx.font = '10px sans-serif';
+                    ctx.fillText(i, x + 3, 12);
+                }
+            }
+
+            const currentX = (currentFrame / maxFrames) * w;
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(currentX, 0);
+            ctx.lineTo(currentX, h);
+            ctx.stroke();
+        }
+
+        function exportGLTF() {
+            if (typeof THREE.GLTFExporter === 'undefined') {
+                showToast('Exporter loading...');
+                return;
+            }
+            const exporter = new THREE.GLTFExporter();
+            exporter.parse(scene, (gltf) => {
+                const output = JSON.stringify(gltf, null, 2);
+                const blob = new Blob([output], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'scene.gltf';
+                link.click();
+            }, { binary: false });
+        }
+
+        function renderImage() {
+            if (!renderer || !scene || !camera) {
+                showToast('Renderer not initialized');
+                return;
+            }
+
+            // Temporarily hide gizmo for a clean render
+            const activeGizmoObj = selectedObject;
+            if (transformControls) transformControls.detach();
+
+            // Force fresh render
+            renderer.render(scene, camera);
+
+            try {
+                // Get canvas image data URL
+                const dataURL = renderer.domElement.toDataURL('image/png');
+
+                // Create download link using blob for iframe safety
+                const fetchPromise = fetch(dataURL)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `blender_render_${Date.now()}.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        setTimeout(() => URL.revokeObjectURL(url), 1000);
+                        showToast('PNG Render Saved!');
+                    });
+            } catch (err) {
+                console.error("Render PNG error:", err);
+                showToast('Failed to generate PNG render');
+            }
+
+            // Restore gizmo attachment if an object was selected
+            if (activeGizmoObj && transformControls && transformControls.mode !== 'select') {
+                transformControls.attach(activeGizmoObj);
+            }
+        }
+
+        function openVideoRenderModal() {
+            document.getElementById('videoRenderControls').classList.remove('hidden');
+            document.getElementById('videoRenderProgress').classList.add('hidden');
+            document.getElementById('videoRenderOutput').classList.add('hidden');
+            document.getElementById('videoRenderModal').classList.remove('hidden');
+        }
+
+        function closeVideoRenderModal() {
+            if (isRenderingVideo) return;
+            document.getElementById('videoRenderModal').classList.add('hidden');
+        }
+
+        function openInfoModal() {
+            document.getElementById('infoModal').classList.remove('hidden');
+        }
+
+        function closeInfoModal() {
+            document.getElementById('infoModal').classList.add('hidden');
+        }
+
+        function startVideoRender() {
+            isRenderingVideo = true;
+            isPlaying = false;
+
+            const activeGizmoObj = selectedObject;
+            if (transformControls) transformControls.detach();
+
+            document.getElementById('videoRenderControls').classList.add('hidden');
+            document.getElementById('videoRenderProgress').classList.remove('hidden');
+
+            const fps = parseInt(document.getElementById('videoFps').value) || 30;
+            const canvas = document.getElementById('threeCanvas');
+            const stream = canvas.captureStream(fps);
+
+            recordedChunks = [];
+            let options = { mimeType: 'video/webm;codecs=vp9' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/webm' };
+            }
+
+            try {
+                mediaRecorder = new MediaRecorder(stream, options);
+            } catch (e) {
+                mediaRecorder = new MediaRecorder(stream);
+            }
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const videoURL = URL.createObjectURL(blob);
+                const videoPreview = document.getElementById('renderedVideoPreview');
+                videoPreview.src = videoURL;
+
+                const downloadBtn = document.getElementById('downloadVideoBtn');
+                downloadBtn.href = videoURL;
+
+                document.getElementById('videoRenderProgress').classList.add('hidden');
+                document.getElementById('videoRenderOutput').classList.remove('hidden');
+
+                if (activeGizmoObj && transformControls && transformControls.mode !== 'select') {
+                    transformControls.attach(activeGizmoObj);
+                }
+                isRenderingVideo = false;
+            };
+
+            seekFrame(0);
+            mediaRecorder.start();
+
+            let renderFrame = 0;
+            const frameDelta = 1 / fps;
+
+            function processFrame() {
+                if (renderFrame > maxFrames) {
+                    setTimeout(() => { mediaRecorder.stop(); }, 200);
+                    return;
+                }
+
+                seekFrame(renderFrame);
+                animationMixers.forEach(mixer => mixer.update(frameDelta));
+                renderer.render(scene, camera);
+
+                const percent = Math.floor((renderFrame / maxFrames) * 100);
+                document.getElementById('videoStatusText').textContent = `Rendering frame ${renderFrame} / ${maxFrames}...`;
+                document.getElementById('videoPercentText').textContent = `${percent}%`;
+                document.getElementById('videoProgressBar').style.width = `${percent}%`;
+
+                renderFrame++;
+                setTimeout(processFrame, 1000 / fps);
+            }
+
+            processFrame();
+        }
+
+        // Initialize Scene on Window Load
+        function initScene() {
+            const container = document.getElementById('canvasContainer');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x18181b);
+
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(5, 5, 8);
+
+            renderer = new THREE.WebGLRenderer({
+                canvas: document.getElementById('threeCanvas'),
+                antialias: true,
+                preserveDrawingBuffer: true
+            });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            transformControls = new THREE.TransformControls(camera, renderer.domElement);
+            transformControls.addEventListener('change', () => {
+                if (selectedObject) syncTransformUI();
+            });
+            transformControls.addEventListener('dragging-changed', (event) => {
+                controls.enabled = !event.value;
+            });
+            scene.add(transformControls);
+
+            const gridHelper = new THREE.GridHelper(20, 20, 0x3f3f46, 0x27272a);
+            scene.add(gridHelper);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            addPrimitive('cube');
+            addLight('point');
+
+            window.addEventListener('resize', onWindowResize);
+            drawTimeline();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvasContainer');
+            if (!container || !renderer || !camera) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            if (isPlaying && !isRenderingVideo) {
+                currentFrame = (currentFrame + 1) % (maxFrames + 1);
+                seekFrame(currentFrame);
+            }
+
+            animationMixers.forEach(mixer => mixer.update(delta));
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initScene();
+            animate();
+        });
+    </script>
+</body>
+</html>
